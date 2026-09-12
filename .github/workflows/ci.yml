@@ -1,0 +1,151 @@
+name: Portalis CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # 1. Go Code Formatting Check
+  go-format-check:
+    name: Go Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - name: Check gofmt
+        run: |
+          UNFORMATTED=$(gofmt -l frames gateway agent 2>/dev/null || true)
+          if [ -n "$UNFORMATTED" ]; then
+            echo "The following Go files are not formatted properly:"
+            echo "$UNFORMATTED"
+            echo "Run 'gofmt -w frames gateway agent' to fix."
+            exit 1
+          fi
+
+  # 2. Frames Protocol Check
+  frames-check:
+    name: Frames Protocol Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        if: hashFiles('frames/go.mod') != ''
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - name: Test Frames Module
+        if: hashFiles('frames/go.mod') != ''
+        working-directory: ./frames
+        run: |
+          go vet ./...
+          go test -v -race ./...
+
+  # 3. Go Gateway Check
+  gateway-check:
+    name: Gateway Build & Vet
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        if: hashFiles('gateway/go.mod') != ''
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - name: Vet & Build Gateway
+        if: hashFiles('gateway/go.mod') != ''
+        working-directory: ./gateway
+        run: |
+          go vet ./...
+          go build -v ./cmd/gateway
+
+  # 4. Go Agent CLI Check
+  agent-check:
+    name: Agent CLI Build & Vet
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        if: hashFiles('agent/go.mod') != ''
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - name: Vet & Build Agent CLI
+        if: hashFiles('agent/go.mod') != ''
+        working-directory: ./agent
+        run: |
+          go vet ./...
+          go build -v ./cmd/agent
+
+  # 5. Bun Control Plane Check
+  server-check:
+    name: Control Plane Typecheck & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        if: hashFiles('apps/server/package.json') != ''
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Server Dependencies
+        if: hashFiles('apps/server/package.json') != ''
+        working-directory: ./apps/server
+        run: bun install
+
+      - name: Typecheck Server
+        if: hashFiles('apps/server/package.json') != ''
+        working-directory: ./apps/server
+        run: bun run typecheck
+
+      - name: Run Server Tests
+        if: hashFiles('apps/server/package.json') != ''
+        working-directory: ./apps/server
+        run: bun test
+
+  # 6. React Dashboard Check
+  client-check:
+    name: Dashboard Client Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        if: hashFiles('apps/client/package.json') != ''
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Client Dependencies
+        if: hashFiles('apps/client/package.json') != ''
+        working-directory: ./apps/client
+        run: bun install
+
+      - name: Build Dashboard Client
+        if: hashFiles('apps/client/package.json') != ''
+        working-directory: ./apps/client
+        run: bun run build
