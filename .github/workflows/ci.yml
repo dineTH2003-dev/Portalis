@@ -44,7 +44,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.23'
-          cache: true
+          cache: false
 
       - name: Test Frames Module
         if: hashFiles('frames/go.mod') != ''
@@ -67,11 +67,13 @@ jobs:
         with:
           go-version: '1.23'
           cache: true
+          cache-dependency-path: gateway/go.sum
 
       - name: Vet & Build Gateway
         if: hashFiles('gateway/go.mod') != ''
         working-directory: ./gateway
         run: |
+          go mod download
           go vet ./...
           go build -v ./cmd/gateway
 
@@ -89,11 +91,13 @@ jobs:
         with:
           go-version: '1.23'
           cache: true
+          cache-dependency-path: agent/go.sum
 
       - name: Vet & Build Agent CLI
         if: hashFiles('agent/go.mod') != ''
         working-directory: ./agent
         run: |
+          go mod download
           go vet ./...
           go build -v ./cmd/agent
 
