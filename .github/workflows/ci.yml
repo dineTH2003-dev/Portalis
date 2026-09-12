@@ -2,9 +2,9 @@ name: Portalis CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, dev ]
 
 jobs:
   # 1. Go Code Formatting Check
